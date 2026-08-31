@@ -464,6 +464,40 @@ describe('LocalContainerProvider', () => {
       expect(mockDevpodDelete).toHaveBeenCalled();
     });
 
+    it('removes Compose volumes when provisioning aborts after devpod up', async () => {
+      mockVerifyCodex.mockReturnValue({ available: false, error: 'Codex CLI is not available inside the container' });
+      const provider = new LocalContainerProvider();
+      const session = makeSession();
+      const config = makeConfig();
+
+      await expect(provider.createWorkspace({ session, config })).rejects.toThrow('Codex CLI');
+
+      expect(mockRemoveComposeProjectVolumes).toHaveBeenCalledWith(`hydraz-${session.id}`);
+    });
+
+    it('removes Compose volumes when the container repository root cannot be resolved', async () => {
+      mockGetContainerRepoPath.mockImplementation(() => { throw new Error('no git repo'); });
+      const provider = new LocalContainerProvider();
+      const session = makeSession();
+      const config = makeConfig();
+
+      await expect(provider.createWorkspace({ session, config })).rejects.toThrow(
+        'Failed to resolve container repository root',
+      );
+
+      expect(mockRemoveComposeProjectVolumes).toHaveBeenCalledWith(`hydraz-${session.id}`);
+    });
+
+    it('reports the provisioning failure even when the teardown delete fails', async () => {
+      mockVerifyCodex.mockReturnValue({ available: false, error: 'Codex CLI is not available inside the container' });
+      mockDevpodDelete.mockImplementation(() => { throw new Error('delete failed'); });
+      const provider = new LocalContainerProvider();
+      const session = makeSession();
+      const config = makeConfig();
+
+      await expect(provider.createWorkspace({ session, config })).rejects.toThrow('Codex CLI');
+    });
+
     it('uses local repo path as devpod source when skipClone is true', async () => {
       const provider = new LocalContainerProvider();
       const session = makeSession();

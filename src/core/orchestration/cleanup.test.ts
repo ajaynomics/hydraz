@@ -207,10 +207,23 @@ describe('destroyOrphanedWorkspace', () => {
   });
 
   it('removes Compose volumes for the orphaned workspace project', () => {
-    destroyOrphanedWorkspace('hydraz-sess-001');
+    destroyOrphanedWorkspace('hydraz-sess-001', 'local-container');
 
     expect(mockComposeProjectName).toHaveBeenCalledWith('hydraz-sess-001');
     expect(mockRemoveComposeProjectVolumes).toHaveBeenCalledWith('hydraz-sess-001');
+  });
+
+  it('attempts Compose volume cleanup when the orphan has no recorded target', () => {
+    destroyOrphanedWorkspace('hydraz-sess-001');
+
+    expect(mockRemoveComposeProjectVolumes).toHaveBeenCalledWith('hydraz-sess-001');
+  });
+
+  it('does not touch local Docker volumes for a cloud orphan', () => {
+    destroyOrphanedWorkspace('hydraz-sess-001', 'cloud');
+
+    expect(mockDevpodDelete).toHaveBeenCalledWith('hydraz-sess-001', true);
+    expect(mockRemoveComposeProjectVolumes).not.toHaveBeenCalled();
   });
 
   it('propagates errors from devpodDelete', () => {
